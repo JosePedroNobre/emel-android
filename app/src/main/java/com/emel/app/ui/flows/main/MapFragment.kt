@@ -1,0 +1,533 @@
+package com.emel.app.ui.flows.main
+
+import android.Manifest
+import android.app.Activity
+import android.content.pm.PackageManager
+import android.location.Geocoder
+import android.location.Location
+import android.os.Bundle
+import android.view.View
+import android.view.inputmethod.InputMethodManager
+import android.widget.EditText
+import android.widget.Toast
+import androidx.appcompat.app.AlertDialog
+import androidx.core.app.ActivityCompat
+import androidx.core.content.ContextCompat
+import androidx.core.content.ContextCompat.getSystemService
+import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.ViewModelProviders
+import com.emel.app.R
+import com.emel.app.network.api.adapter.Status
+import com.emel.app.network.model.Malfunction
+import com.emel.app.network.model.ParkingMeter
+import com.emel.app.ui.base.BaseFragment
+import com.emel.app.ui.common.NavigationManager
+import com.emel.app.utils.LoadingUtils
+import com.emel.app.utils.getToken
+import com.google.android.gms.common.api.GoogleApiClient
+import com.google.android.gms.location.LocationServices
+import com.google.android.gms.maps.CameraUpdateFactory
+import com.google.android.gms.maps.GoogleMap
+import com.google.android.gms.maps.OnMapReadyCallback
+import com.google.android.gms.maps.model.*
+import com.google.android.material.textfield.TextInputLayout
+import im.delight.android.location.SimpleLocation
+import kotlinx.android.synthetic.main.activity_main.*
+import kotlinx.android.synthetic.main.fragment_map.*
+import java.util.*
+import javax.inject.Inject
+
+//0 = GREEN, 1 = YELLOW, 2 = RED
+
+class MapFragment : BaseFragment<MapFragmentVM>(), OnMapReadyCallback,
+    GoogleMap.OnMarkerClickListener, GoogleMap.OnMapClickListener,
+    GoogleApiClient.ConnectionCallbacks {
+
+    companion object {
+        fun newInstance() = MapFragment()
+    }
+
+    @Inject
+    lateinit var viewModelFactory: ViewModelProvider.Factory
+
+    @Inject
+    lateinit var navigationManager: NavigationManager
+
+    private lateinit var mGoogleMap: GoogleMap
+
+    private var mCurrLocationMarker: Marker? = null
+    private var location: SimpleLocation? = null
+    private var latitude: Double = 0.0
+    private var longitude: Double = 0.0
+    val LOCATION_PERMISSION = 99
+    private var parkingMeters: List<ParkingMeter> = emptyList()
+    private var googleApiClient: GoogleApiClient? = null
+
+    override fun layoutToInflate() = R.layout.fragment_map
+
+    override fun defineViewModel() =
+        ViewModelProviders.of(this, viewModelFactory).get(MapFragmentVM::class.java)
+
+    override fun doOnCreated() {
+
+        requireActivity().backButton.visibility = View.GONE
+        requireActivity().tasksIcon.visibility = View.VISIBLE
+
+        getMarkers()
+
+        googleApiClient = GoogleApiClient.Builder(requireContext())
+            .addConnectionCallbacks(this)
+            .addApi(LocationServices.API)
+            .build()
+
+        if ((ContextCompat.checkSelfPermission(
+                requireContext(),
+                Manifest.permission.ACCESS_FINE_LOCATION
+            ) == PackageManager.PERMISSION_GRANTED)
+        ) {
+            setLayoutLocation()
+        } else {
+            requestPermissions(
+                arrayOf(Manifest.permission.ACCESS_FINE_LOCATION),
+                LOCATION_PERMISSION
+            )
+        }
+    }
+
+    private fun getMarkers(zoomIntoLocation: Boolean = true) {
+        val token = requireActivity().getToken()
+        parkingMeters = emptyList()
+        viewModel.getParkingMeters(token!!).observe(this, androidx.lifecycle.Observer {
+            when (it.status) {
+                Status.SUCCESS -> {
+                    if (it.data != null) {
+                        parkingMeters = it.data
+                        drawPinpoint(zoomIntoLocation)
+                    }
+                }
+                Status.LOADING -> Toast.makeText(requireContext(), "Loading", Toast.LENGTH_LONG)
+                    .show()
+                Status.ERROR -> {
+                    Toast.makeText(requireContext(), "Error", Toast.LENGTH_LONG).show()
+                    LoadingUtils.dismiss()
+                }
+            }
+        })
+    }
+
+    override fun onResume() {
+        super.onResume()
+        location?.beginUpdates()
+    }
+
+    override fun onStart() {
+        googleApiClient?.connect()
+        super.onStart()
+    }
+
+    override fun onPause() {
+        super.onPause()
+        location?.endUpdates()
+    }
+
+    override fun onStop() {
+        super.onStop()
+        googleApiClient?.disconnect();
+    }
+
+    private fun checkLocationPermission() {
+        if ((ContextCompat.checkSelfPermission(
+                requireContext(),
+                Manifest.permission.ACCESS_FINE_LOCATION
+            ) !== PackageManager.PERMISSION_GRANTED)
+        ) {
+
+            if (shouldShowRequestPermissionRationale(
+                    Manifest.permission.ACCESS_FINE_LOCATION
+                )
+            ) {
+                AlertDialog.Builder(requireContext())
+                    .setTitle("Location Permission Needed")
+                    .setMessage("This app needs the Location permission, please go to setting to use location functionality")
+                    .setPositiveButton(
+                        "OK"
+                    ) { _, _ -> }
+                    .create()
+                    .show()
+            } else {
+                requestPermissions(
+                    arrayOf(Manifest.permission.ACCESS_FINE_LOCATION),
+                    LOCATION_PERMISSION
+                )
+            }
+        }
+    }
+
+    override fun onRequestPermissionsResult(
+        requestCode: Int,
+        permissions: Array<out String>,
+        grantResults: IntArray
+    ) {
+        when (requestCode) {
+            LOCATION_PERMISSION -> {
+                if (grantResults.isNotEmpty() &&
+                    grantResults[0] == PackageManager.PERMISSION_GRANTED
+                ) {
+                    if (ContextCompat.checkSelfPermission(
+                            requireContext(),
+                            Manifest.permission.ACCESS_FINE_LOCATION
+                        )
+                        == PackageManager.PERMISSION_GRANTED
+                    ) {
+                        setLayoutLocation()
+                    }
+                } else {
+                    checkLocationPermission()
+                }
+                return
+            }
+        }
+    }
+
+    private fun drawPinpoint(zoomIntoLocation: Boolean = false) {
+        val currentLatLng = LatLng(latitude, longitude)
+        parkingMeters.forEach {
+            val latLng = LatLng(it.latitude, it.longitude)
+            val markerOptions = MarkerOptions()
+            markerOptions.position(latLng)
+            markerOptions.title("Current Position")
+
+            when (it.status) {
+                0 -> {
+                    markerOptions.icon(
+                        BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_GREEN)
+                    )
+                }
+                1 -> {
+                    markerOptions.icon(
+                        BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_ORANGE)
+                    )
+                }
+                2 -> {
+                    markerOptions.icon(
+                        BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_RED)
+                    )
+                }
+                3 -> {
+                    markerOptions.icon(
+                        BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_VIOLET)
+                    )
+                }
+            }
+
+            mCurrLocationMarker = mGoogleMap.addMarker(markerOptions)
+            mCurrLocationMarker!!.tag = it.id
+        }
+
+        // move camera
+        if (zoomIntoLocation) {
+            mGoogleMap.moveCamera(CameraUpdateFactory.newLatLngZoom(currentLatLng, 20f))
+        }
+
+    }
+
+    private fun getAddress(latitude: Double, longitude: Double): String {
+        val geocoder = Geocoder(requireContext(), Locale.getDefault())
+        val address = geocoder.getFromLocation(latitude, longitude, 1)
+
+        return if (address.isNotEmpty()) {
+            address[0].getAddressLine(0)
+        } else {
+            ""
+        }
+    }
+
+    private fun setLayoutLocation() {
+        getCurrentLocation()
+        mapview.onCreate(null)
+        mapview.getMapAsync(this)
+        mapview.onResume()
+    }
+
+    override fun onMapReady(googleMap: GoogleMap) {
+        mGoogleMap = googleMap
+        googleMap.setMapStyle(
+            MapStyleOptions.loadRawResourceStyle(
+                requireContext(),
+                R.raw.style_json
+            )
+        )
+        if (ActivityCompat.checkSelfPermission(
+                requireContext(),
+                Manifest.permission.ACCESS_FINE_LOCATION
+            ) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(
+                requireContext(),
+                Manifest.permission.ACCESS_COARSE_LOCATION
+            ) != PackageManager.PERMISSION_GRANTED
+        ) {
+            return
+        }
+
+        googleMap.setOnMapClickListener(this)
+        googleMap.setOnMarkerClickListener(this)
+        mGoogleMap.isMyLocationEnabled = true
+
+    }
+
+    private fun getCurrentLocation() {
+        if (ActivityCompat.checkSelfPermission(
+                requireContext(),
+                Manifest.permission.ACCESS_FINE_LOCATION
+            ) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(
+                requireContext(),
+                Manifest.permission.ACCESS_COARSE_LOCATION
+            ) != PackageManager.PERMISSION_GRANTED
+        ) {
+            return
+        }
+        val location: Location? = LocationServices.FusedLocationApi.getLastLocation(googleApiClient)
+        if (location != null) {
+            longitude = location.longitude
+            latitude = location.latitude
+            moveMap()
+        }
+    }
+
+    private fun moveMap() {
+        val latLng = LatLng(latitude, longitude)
+        mGoogleMap.moveCamera(CameraUpdateFactory.newLatLng(latLng))
+        mGoogleMap.animateCamera(CameraUpdateFactory.zoomTo(18f))
+    }
+
+    override fun onMarkerClick(marker: Marker): Boolean {
+        manageBottomSheet(!bottomSheetLayout.isExpended(), marker)
+        return true
+    }
+
+    private fun manageBottomSheet(open: Boolean, marker: Marker) {
+        if (open) {
+            bottomSheetLayout.visibility = View.VISIBLE
+            bottomSheetLayout.expand()
+
+            val parkingMeter = parkingMeters.find {
+                it.id == marker.tag as Int
+            }
+
+            when (parkingMeter?.status) {
+                0 -> {
+                    subtitle.setTextColor(
+                        ContextCompat.getColor(
+                            requireContext(),
+                            R.color.colorAccent
+                        )
+                    )
+
+                    createRepair.setBackgroundResource(R.drawable.rounded_button_red)
+                    solveRepair.setBackgroundResource(R.drawable.rounded_button_grey)
+
+                    createRepair.setOnClickListener {
+                        createDescriptionDialog(parkingMeter)
+                    }
+
+                    subtitle.text = "OPERACIONAL"
+                    repairDescriptionTitle.visibility = View.GONE
+                    repairDescription.visibility = View.GONE
+                }
+                2 -> {
+                    subtitle.setTextColor(
+                        ContextCompat.getColor(
+                            requireContext(),
+                            R.color.redColor
+                        )
+                    )
+
+                    createRepair.setBackgroundResource(R.drawable.rounded_button_grey)
+                    solveRepair.setBackgroundResource(R.drawable.rounded_button_green)
+
+                    solveRepair.setOnClickListener {
+                        parkingMeter.status = 0
+
+                        viewModel.updateMalfunctionInParkingMeter(
+                            requireActivity().getToken()!!,
+                            parkingMeter.id,
+                            parkingMeter
+                        ).observe(
+                            this,
+                            androidx.lifecycle.Observer { malfunctionUpdateResponse ->
+
+                                when (malfunctionUpdateResponse.status) {
+                                    Status.SUCCESS -> {
+                                        getMarkers(false)
+                                        bottomSheetLayout.collapse()
+                                        bottomSheetLayout.visibility = View.GONE
+                                    }
+                                    Status.LOADING -> Toast.makeText(
+                                        requireContext(),
+                                        "Changing",
+                                        Toast.LENGTH_LONG
+                                    )
+                                    Status.ERROR -> {
+                                        Toast.makeText(
+                                            requireContext(),
+                                            "Error while solving the repair",
+                                            Toast.LENGTH_LONG
+                                        )
+                                            .show()
+                                    }
+                                }
+                            })
+                    }
+
+                    subtitle.text = "AVARIADO"
+                    repairDescriptionTitle.visibility = View.VISIBLE
+                    repairDescription.visibility = View.VISIBLE
+
+                }
+
+                3 -> {
+                    subtitle.setTextColor(
+                        ContextCompat.getColor(
+                            requireContext(),
+                            R.color.colorGrey
+                        )
+                    )
+
+                    createRepair.setBackgroundResource(R.drawable.rounded_button_grey)
+                    solveRepair.setBackgroundResource(R.drawable.rounded_button_grey)
+                    subtitle.text = "Desactivo"
+                }
+
+                1 -> {
+                    subtitle.setTextColor(
+                        ContextCompat.getColor(
+                            requireContext(),
+                            R.color.colorOrange
+                        )
+                    )
+
+                    createRepair.setBackgroundResource(R.drawable.rounded_button_grey)
+                    solveRepair.setBackgroundResource(R.drawable.rounded_button_green)
+                    subtitle.text = "EM REPARAÇÃO"
+
+                    if (!parkingMeter.malfunctions.isNullOrEmpty()) {
+                        repairDescription.text = parkingMeter.malfunctions[0].description
+                    }
+
+                    repairDescriptionTitle.visibility = View.VISIBLE
+                    repairDescription.visibility = View.VISIBLE
+
+                    solveRepair.setOnClickListener {
+                        parkingMeter.status = 0
+
+                        viewModel.updateMalfunctionInParkingMeter(
+                            requireActivity().getToken()!!,
+                            parkingMeter.id,
+                            parkingMeter
+                        ).observe(
+                            this,
+                            androidx.lifecycle.Observer { malfunctionUpdateResponse ->
+
+                                when (malfunctionUpdateResponse.status) {
+                                    Status.SUCCESS -> {
+                                        getMarkers(false)
+                                        bottomSheetLayout.collapse()
+                                        bottomSheetLayout.visibility = View.GONE
+                                    }
+                                    Status.LOADING -> Toast.makeText(
+                                        requireContext(),
+                                        "Changing",
+                                        Toast.LENGTH_LONG
+                                    )
+                                    Status.ERROR -> {
+                                        Toast.makeText(
+                                            requireContext(),
+                                            "Error while solving the repair",
+                                            Toast.LENGTH_LONG
+                                        )
+                                            .show()
+                                    }
+                                }
+                            })
+                    }
+                }
+            }
+        } else {
+            bottomSheetLayout.collapse()
+            bottomSheetLayout.visibility = View.GONE
+        }
+    }
+
+    private fun createDescriptionDialog(parkingMeter: ParkingMeter) {
+        val textInputLayout = TextInputLayout(requireContext())
+        textInputLayout.setPadding(
+            19, // if you look at android alert_dialog.xml, you will see the message textview have margin 14dp and padding 5dp. This is the reason why I use 19 here
+            10,
+            19,
+            0
+        )
+        val input = EditText(context)
+        val imm: InputMethodManager =
+            requireActivity().getSystemService(Activity.INPUT_METHOD_SERVICE) as InputMethodManager
+        textInputLayout.hint = "Inserir Descrição"
+        textInputLayout.addView(input)
+
+        val alert = AlertDialog.Builder(requireContext())
+            .setView(textInputLayout)
+            .setPositiveButton("Criar") { dialog, _ ->
+
+                val malfunction = Malfunction(
+                    id = null,
+                    creationDate = null,
+                    resolvedDate = null,
+                    status = 0,
+                    description = input.text.toString(),
+                    latitude = null,
+                    longitude = null,
+                    parkingMeterId = parkingMeter.id
+                )
+                viewModel.addMaintenanceInParkingMeter(requireActivity().getToken()!!, malfunction)
+                    .observe(this,
+                        androidx.lifecycle.Observer {
+                            when (it.status) {
+                                Status.SUCCESS -> {
+                                    getMarkers(false)
+                                    bottomSheetLayout.collapse()
+                                    bottomSheetLayout.visibility = View.GONE
+                                    imm.toggleSoftInput(InputMethodManager.HIDE_IMPLICIT_ONLY, 0)
+                                }
+                                Status.LOADING -> Toast.makeText(
+                                    requireContext(),
+                                    "Changing",
+                                    Toast.LENGTH_LONG
+                                )
+                                Status.ERROR -> {
+                                    Toast.makeText(
+                                        requireContext(),
+                                        "Error while solving the repair",
+                                        Toast.LENGTH_LONG
+                                    )
+                                        .show()
+                                }
+                            }
+                        })
+
+                dialog.cancel()
+            }
+            .setNegativeButton("Cancel") { dialog, _ ->
+                dialog.cancel()
+            }.create()
+
+        alert.show()
+    }
+
+    override fun onConnected(p0: Bundle?) {
+        getCurrentLocation()
+    }
+
+    override fun onConnectionSuspended(p0: Int) {
+    }
+
+    override fun onMapClick(p0: LatLng?) {
+        bottomSheetLayout.visibility = View.GONE
+    }
+}

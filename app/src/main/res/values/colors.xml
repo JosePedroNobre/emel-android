@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <!-- System colors -->
+    <color name="colorPrimary">#149AE4</color>
+    <color name="colorPrimaryDark">#000000</color>
+    <color name="colorAccent">#016d1b</color>
+    <color name="colorAccentDark">#015415</color>
+    <color name="colorOrange">#FF9800</color>
+
+    <!-- plain colors -->
+    <color name="blue">#ff0099cc</color>
+    <color name="whiteColor">#ffffff</color>
+    <color name="redColor">#E01313</color>
+    <color name="blackColor">#000000</color>
+    <color name="blueColor">#2196F3</color>
+    <color name="app_blue">#6ECCE2</color>
+
+    <!-- states -->
+    <color name="colorDisabled">#424f4f4f</color>
+    <color name="colorUnderline">#E6E6E6</color>
+    <color name="colorGrey">#a8a8a8</color>
+    <color name="colorWhiteGray">#E2DEDE</color>
+    <color name="colorDark">#000000</color>
+    <color name="white">#ffffffff</color>
+    <color name="whiteGrey">#ACABAB</color>
+    <color name="transparentColor">#0000ffff</color>
+
+    <!-- Translucent colors -->
+    <color name="translucent_black_dark">#BB000000</color>
+    <color name="translucent_black_light">#70000000</color>
+</resources>

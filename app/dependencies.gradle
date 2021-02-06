@@ -1,0 +1,73 @@
+apply from: 'versions.gradle'
+dependencies {
+    implementation fileTree(dir: 'libs', include: ['*.jar'])
+
+    // Kotlin
+    implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk7:$kotlin_version"
+
+    // appCompat
+    implementation "com.android.support:recyclerview-v7:$supportLibVersion"
+    implementation "com.android.support:appcompat-v7:$supportLibVersion"
+    implementation "androidx.constraintlayout:constraintlayout:$constraintLayoutVersion"
+
+    // architecture
+    implementation "android.arch.persistence.room:runtime:$archVersion"
+    kapt "android.arch.persistence.room:compiler:$archVersion"
+    implementation "android.arch.lifecycle:runtime:$archRuntimeVersion"
+    implementation "android.arch.lifecycle:extensions:$archExtensionVersion"
+    kapt "android.arch.lifecycle:compiler:$archVersion"
+    implementation 'com.qhutch.bottomsheetlayout:bottomsheetlayout:0.1.9'
+    //Retrofit
+    implementation "com.android.support:cardview-v7:$supportLibVersion"
+    implementation "com.android.support:design:$supportLibVersion"
+    implementation "com.android.support:palette-v7:$supportLibVersion"
+
+    implementation 'com.google.android.gms:play-services-vision:19.0.0'
+    //Retrofit
+    implementation "com.squareup.retrofit2:retrofit:$retrofitVersion"
+    implementation "com.squareup.retrofit2:converter-jackson:$retrofitVersion"
+    implementation "com.squareup.retrofit2:converter-gson:$retrofitVersion"
+    implementation "com.squareup.retrofit2:adapter-rxjava2:$retrofitVersion"
+
+    // Ok Http
+    implementation "com.squareup.okhttp3:okhttp:$okhttpVersion"
+    implementation "com.squareup.okhttp3:logging-interceptor:$okhttpVersion"
+    implementation "android.arch.paging:runtime:$archPagingVersion"
+    implementation 'com.github.delight-im:Android-SimpleLocation:v1.0.1'
+    implementation "com.google.android.gms:play-services-location:15.0.1"
+    implementation "com.google.android.gms:play-services-gcm:15.0.1"
+    implementation 'org.michaelbel:bottomsheet:1.2.3'
+
+    //Dagger
+    implementation "com.google.dagger:dagger:$daggerVersion"
+    implementation "com.google.dagger:dagger-android:$daggerVersion"
+    implementation "com.google.dagger:dagger-android-support:$daggerVersion"
+    kapt "com.google.dagger:dagger-android-processor:$daggerVersion"
+    kapt "com.google.dagger:dagger-compiler:$daggerVersion"
+    implementation 'com.tbuonomo.andrui:viewpagerdotsindicator:4.1.2'
+
+    //Other Libs
+    implementation "com.miguelcatalan:materialsearchview:$materialSearchViewVersion"
+    implementation "com.google.android.material:material:1.3.0-beta01"
+    implementation 'com.android.support:multidex:1.0.3'
+    implementation "com.github.bumptech.glide:glide:$glideVersion"
+    implementation 'com.google.firebase:firebase-analytics:17.2.1'
+    implementation 'com.google.android.gms:play-services-maps:17.0.0'
+
+    // Testing
+    testImplementation "org.mockito:mockito-core:$mockitoVersion"
+    androidTestImplementation "org.mockito:mockito-core:$mockitoVersion"
+    androidTestImplementation "org.mockito:mockito-android:$mockitoVersion"
+    testImplementation "junit:junit:$junitVersion"
+    testImplementation "com.squareup.okhttp3:mockwebserver:$mockWebServerVersion"
+    testImplementation "android.arch.persistence.room:testing:$archVersion"
+    androidTestImplementation "com.android.support.test:runner:$supportTestVersion"
+    androidTestImplementation "com.android.support.test.espresso:espresso-core:$espressoCoreVersion"
+
+    androidTestImplementation("android.arch.core:core-testing:$archVersion", {
+    })
+
+    androidTestImplementation "org.mockito:mockito-core:$mockitoVersion", {
+        exclude group: 'net.bytebuddy'
+    }
+}

@@ -1,0 +1,20 @@
+android {
+    flavorDimensions "app"
+
+    productFlavors {
+        dev {
+            manifestPlaceholders = [appname:"Emel"]
+            buildConfigField "String", "API_URL", "\"https://parkingmetermanager.azurewebsites.net/\""
+        }
+
+        uat {
+            manifestPlaceholders = [appname:"Emel"]
+            buildConfigField "String", "API_URL", "\"https://parkingmetermanager.azurewebsites.net/\""
+        }
+
+        production {
+            manifestPlaceholders = [appname:"Emel"]
+            buildConfigField "String", "API_URL", "\"https://parkingmetermanager.azurewebsites.net/\""
+        }
+    }
+}
