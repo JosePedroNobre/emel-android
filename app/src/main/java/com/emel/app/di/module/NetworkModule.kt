@@ -5,7 +5,6 @@ import com.emel.app.BuildConfig
 import com.emel.app.network.api.AuthInterceptor
 import com.emel.app.network.api.ApiService
 import com.emel.app.network.api.adapter.LiveDataCallAdapterFactory
-import com.emel.app.network.api.adapter.TokenAutheticator
 import com.emel.app.utils.AppConstants.CONNECT_TIMEOUT
 import com.emel.app.utils.AppConstants.READ_TIMEOUT
 import com.emel.app.utils.AppConstants.WRITE_TIMEOUT
@@ -44,7 +43,6 @@ class NetworkModule {
 
         return OkHttpClient.Builder()
             .addInterceptor(AuthInterceptor())
-            .authenticator(TokenAutheticator())
             .addInterceptor(httpLoggingInterceptor)
             .connectTimeout(CONNECT_TIMEOUT, TimeUnit.SECONDS)
             .writeTimeout(WRITE_TIMEOUT, TimeUnit.SECONDS)

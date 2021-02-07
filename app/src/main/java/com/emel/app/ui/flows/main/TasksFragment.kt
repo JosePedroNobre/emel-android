@@ -1,5 +1,6 @@
 package com.emel.app.ui.flows.main
 
+import android.util.Log
 import android.widget.Toast
 import androidx.lifecycle.Observer
 import androidx.lifecycle.ViewModelProvider
@@ -7,12 +8,12 @@ import androidx.lifecycle.ViewModelProviders
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.emel.app.R
 import com.emel.app.network.api.adapter.Status
+import com.emel.app.network.api.requests.TokenRequest
 import com.emel.app.network.model.Malfunction
 import com.emel.app.network.model.ParkingMeter
 import com.emel.app.ui.adapter.MalfunctionsAdapter
 import com.emel.app.ui.base.BaseFragment
-import com.emel.app.utils.LoadingUtils
-import com.emel.app.utils.getToken
+import com.emel.app.utils.*
 import kotlinx.android.synthetic.main.fragment_tasks.*
 import javax.inject.Inject
 
@@ -35,22 +36,55 @@ class TasksFragment : BaseFragment<TasksFragmentVM>() {
     private var malFunctions: List<Malfunction> = emptyList()
 
     override fun doOnCreated() {
+        getMalfunctions()
+    }
+
+    private fun getMalfunctions() {
         viewModel.getAsssignedMalfunctions(requireActivity().getToken()!!).observe(this, Observer {
             when (it.status) {
                 Status.SUCCESS -> {
                     malFunctions = it.data!!
                     setRvActives()
                     setRvFinished()
-                    LoadingUtils.dismiss()
                 }
-                Status.LOADING -> LoadingUtils.showLoading(childFragmentManager)
+                Status.LOADING -> Toast.makeText(requireContext(), "Loading", Toast.LENGTH_SHORT)
+                    .show()
                 Status.ERROR -> {
-                    LoadingUtils.dismiss()
-                    Toast.makeText(
-                        requireActivity(),
-                        "Error while fetching the malfunctions",
-                        Toast.LENGTH_LONG
-                    ).show()
+                    if (it.code == 401) {
+                        val refreshTokenRequest =
+                            TokenRequest(requireActivity().getRefreshToken().toString())
+
+                        viewModel.refreshToken(
+                            requireActivity().getToken().toString(),
+                            refreshTokenRequest
+                        )
+                            .observeForever {
+                                when (it.status) {
+                                    Status.SUCCESS -> {
+                                        requireActivity().clearSharedPreferences()
+                                        requireActivity().setToken("Bearer ${it?.data?.token}")
+                                        requireActivity().setRefreshToken("${it?.data?.refreshToken}")
+                                        getMalfunctions()
+                                    }
+                                    Status.LOADING -> Toast.makeText(
+                                        requireContext(),
+                                        "Refreshing Token",
+                                        Toast.LENGTH_SHORT
+                                    ).show()
+                                    Status.ERROR -> Toast.makeText(
+                                        requireContext(),
+                                        "Error while refreshing the token, logout and login again",
+                                        Toast.LENGTH_SHORT
+                                    ).show()
+                                }
+                            }
+                    } else {
+                        Toast.makeText(
+                            requireContext(),
+                            "Error while fetching the malfunctions",
+                            Toast.LENGTH_SHORT
+                        ).show()
+                    }
                 }
             }
         })

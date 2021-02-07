@@ -11,7 +11,6 @@ import com.emel.app.network.api.adapter.Status
 import com.emel.app.network.api.requests.LoginRequest
 import com.emel.app.ui.base.BaseActivity
 import com.emel.app.ui.common.NavigationManager
-import com.emel.app.utils.LoadingUtils
 import com.emel.app.utils.setRefreshToken
 import com.emel.app.utils.setToken
 import kotlinx.android.synthetic.main.activity_authentication.*
@@ -45,9 +44,13 @@ class AuthenticationActivity : BaseActivity<AuthenticationActivityVM>() {
                         navigationManager.goToMainScreen(applicationContext)
                         finish()
                     }
-                    Status.LOADING -> LoadingUtils.showLoading(supportFragmentManager)
+                    Status.LOADING -> Toast.makeText(
+                        applicationContext,
+                        "Loading",
+                        Toast.LENGTH_LONG
+                    )
+                        .show()
                     Status.ERROR -> {
-                        LoadingUtils.dismiss()
                         Toast.makeText(applicationContext, "Error", Toast.LENGTH_LONG)
                             .show()
                     }
@@ -66,6 +69,6 @@ class AuthenticationActivity : BaseActivity<AuthenticationActivityVM>() {
 
     private fun saveTokensInSharedPreferences(token: String, refreshToken: String) {
         setToken("Bearer $token")
-        setRefreshToken("Bearer $refreshToken")
+        setRefreshToken(refreshToken)
     }
 }

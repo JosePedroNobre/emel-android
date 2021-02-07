@@ -20,7 +20,7 @@ interface ApiService {
     fun refreshToken(
         @Header("Authorization") token: String,
         @Body refreshToken: TokenRequest
-    ): Call<TokenResponse>
+    ):   LiveData<ApiResponse<TokenResponse>>
 
     @GET("/api/parking-meter/all")
     fun getAllParkingMeters(

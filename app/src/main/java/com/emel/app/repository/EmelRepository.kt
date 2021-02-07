@@ -6,7 +6,9 @@ import com.emel.app.network.api.adapter.AppExecutors
 import com.emel.app.network.api.adapter.NetworkBoundResource
 import com.emel.app.network.api.adapter.Resource
 import com.emel.app.network.api.requests.LoginRequest
+import com.emel.app.network.api.requests.TokenRequest
 import com.emel.app.network.api.responses.LoginResponse
+import com.emel.app.network.api.responses.TokenResponse
 import com.emel.app.network.model.Malfunction
 import com.emel.app.network.model.ParkingMeter
 import okhttp3.Credentials
@@ -26,6 +28,12 @@ class EmelRepository @Inject constructor(
     fun getAllParkingMeters(token: String): LiveData<Resource<List<ParkingMeter>>> {
         return object : NetworkBoundResource<List<ParkingMeter>>(appExecutors) {
             override fun createCall() = apiService.getAllParkingMeters(token)
+        }.asLiveData()
+    }
+
+    fun refreshToken(token: String,tokenRequest: TokenRequest): LiveData<Resource<TokenResponse>> {
+        return object : NetworkBoundResource<TokenResponse>(appExecutors) {
+            override fun createCall() = apiService.refreshToken(token,tokenRequest)
         }.asLiveData()
     }
 

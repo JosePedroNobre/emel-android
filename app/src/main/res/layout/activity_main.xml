@@ -31,7 +31,7 @@
                 android:layout_height="wrap_content"
                 android:layout_gravity="center"
                 android:fontFamily="@font/montserrat_bold"
-                android:text="José Nobre"
+                android:text="demo"
                 android:textColor="@color/white"
                 android:textSize="20sp" />
 
@@ -42,8 +42,7 @@
                 android:layout_gravity="end"
                 android:layout_marginRight="10dp"
                 android:background="@drawable/ic_logout"
-                android:backgroundTint="@color/white"
-                android:text="José Nobre" />
+                android:backgroundTint="@color/white" />
 
 
         <ImageView
@@ -53,8 +52,7 @@
                 android:layout_gravity="end"
                 android:layout_marginRight="10dp"
                 android:background="@drawable/ic_task"
-                android:backgroundTint="@color/white"
-                android:text="José Nobre" />
+                android:backgroundTint="@color/white" />
 
 
     </androidx.appcompat.widget.Toolbar>

@@ -2,6 +2,7 @@ package com.emel.app.ui.flows.main
 
 import androidx.lifecycle.ViewModel
 import com.emel.app.network.api.requests.LoginRequest
+import com.emel.app.network.api.requests.TokenRequest
 import com.emel.app.network.model.Malfunction
 import com.emel.app.network.model.ParkingMeter
 import com.emel.app.repository.EmelRepository
@@ -18,4 +19,7 @@ class MapFragmentVM @Inject constructor(private val emelRepository: EmelReposito
 
     fun getParkingMeters(token: String) =
         emelRepository.getAllParkingMeters(token)
+
+    fun refreshToken(token: String, tokenRequest: TokenRequest) =
+        emelRepository.refreshToken(token, tokenRequest)
 }

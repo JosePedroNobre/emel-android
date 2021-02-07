@@ -6,6 +6,7 @@ import android.content.pm.PackageManager
 import android.location.Geocoder
 import android.location.Location
 import android.os.Bundle
+import android.util.Log
 import android.view.View
 import android.view.inputmethod.InputMethodManager
 import android.widget.EditText
@@ -16,18 +17,20 @@ import androidx.core.content.ContextCompat
 import androidx.core.content.ContextCompat.getSystemService
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.ViewModelProviders
+import com.emel.app.App
 import com.emel.app.R
 import com.emel.app.network.api.adapter.Status
+import com.emel.app.network.api.requests.TokenRequest
 import com.emel.app.network.model.Malfunction
 import com.emel.app.network.model.ParkingMeter
 import com.emel.app.ui.base.BaseFragment
 import com.emel.app.ui.common.NavigationManager
-import com.emel.app.utils.LoadingUtils
-import com.emel.app.utils.getToken
+import com.emel.app.utils.*
 import com.google.android.gms.common.api.GoogleApiClient
 import com.google.android.gms.location.LocationServices
 import com.google.android.gms.maps.CameraUpdateFactory
 import com.google.android.gms.maps.GoogleMap
+import com.google.android.gms.maps.MapsInitializer
 import com.google.android.gms.maps.OnMapReadyCallback
 import com.google.android.gms.maps.model.*
 import com.google.android.material.textfield.TextInputLayout
@@ -69,11 +72,8 @@ class MapFragment : BaseFragment<MapFragmentVM>(), OnMapReadyCallback,
         ViewModelProviders.of(this, viewModelFactory).get(MapFragmentVM::class.java)
 
     override fun doOnCreated() {
-
         requireActivity().backButton.visibility = View.GONE
         requireActivity().tasksIcon.visibility = View.VISIBLE
-
-        getMarkers()
 
         googleApiClient = GoogleApiClient.Builder(requireContext())
             .addConnectionCallbacks(this)
@@ -108,8 +108,41 @@ class MapFragment : BaseFragment<MapFragmentVM>(), OnMapReadyCallback,
                 Status.LOADING -> Toast.makeText(requireContext(), "Loading", Toast.LENGTH_LONG)
                     .show()
                 Status.ERROR -> {
-                    Toast.makeText(requireContext(), "Error", Toast.LENGTH_LONG).show()
-                    LoadingUtils.dismiss()
+                    if (it.code == 401) {
+                        val refreshTokenRequest =
+                            TokenRequest(requireActivity().getRefreshToken().toString())
+
+                        viewModel.refreshToken(
+                            requireActivity().getToken().toString(),
+                            refreshTokenRequest
+                        )
+                            .observeForever {
+                                when (it.status) {
+                                    Status.SUCCESS -> {
+                                        requireActivity().clearSharedPreferences()
+                                        requireActivity().setToken("Bearer ${it?.data?.token}")
+                                        requireActivity().setRefreshToken("${it?.data?.refreshToken}")
+                                        getMarkers()
+                                    }
+                                    Status.LOADING -> Toast.makeText(
+                                        requireContext(),
+                                        "Refreshing Token",
+                                        Toast.LENGTH_SHORT
+                                    ).show()
+                                    Status.ERROR -> Toast.makeText(
+                                        requireContext(),
+                                        "Error while refreshing the token, logout and login again",
+                                        Toast.LENGTH_SHORT
+                                    ).show()
+                                }
+                            }
+                    } else {
+                        Toast.makeText(
+                            requireContext(),
+                            "Error while fetching parking meters",
+                            Toast.LENGTH_SHORT
+                        ).show()
+                    }
                 }
             }
         })
@@ -243,7 +276,6 @@ class MapFragment : BaseFragment<MapFragmentVM>(), OnMapReadyCallback,
     }
 
     private fun setLayoutLocation() {
-        getCurrentLocation()
         mapview.onCreate(null)
         mapview.getMapAsync(this)
         mapview.onResume()
@@ -257,6 +289,7 @@ class MapFragment : BaseFragment<MapFragmentVM>(), OnMapReadyCallback,
                 R.raw.style_json
             )
         )
+
         if (ActivityCompat.checkSelfPermission(
                 requireContext(),
                 Manifest.permission.ACCESS_FINE_LOCATION
@@ -268,6 +301,8 @@ class MapFragment : BaseFragment<MapFragmentVM>(), OnMapReadyCallback,
             return
         }
 
+        getCurrentLocation()
+        getMarkers()
         googleMap.setOnMapClickListener(this)
         googleMap.setOnMarkerClickListener(this)
         mGoogleMap.isMyLocationEnabled = true
@@ -345,43 +380,16 @@ class MapFragment : BaseFragment<MapFragmentVM>(), OnMapReadyCallback,
                     solveRepair.setBackgroundResource(R.drawable.rounded_button_green)
 
                     solveRepair.setOnClickListener {
-                        parkingMeter.status = 0
-
-                        viewModel.updateMalfunctionInParkingMeter(
-                            requireActivity().getToken()!!,
-                            parkingMeter.id,
-                            parkingMeter
-                        ).observe(
-                            this,
-                            androidx.lifecycle.Observer { malfunctionUpdateResponse ->
-
-                                when (malfunctionUpdateResponse.status) {
-                                    Status.SUCCESS -> {
-                                        getMarkers(false)
-                                        bottomSheetLayout.collapse()
-                                        bottomSheetLayout.visibility = View.GONE
-                                    }
-                                    Status.LOADING -> Toast.makeText(
-                                        requireContext(),
-                                        "Changing",
-                                        Toast.LENGTH_LONG
-                                    )
-                                    Status.ERROR -> {
-                                        Toast.makeText(
-                                            requireContext(),
-                                            "Error while solving the repair",
-                                            Toast.LENGTH_LONG
-                                        )
-                                            .show()
-                                    }
-                                }
-                            })
+                        solveRepair(parkingMeter)
                     }
 
                     subtitle.text = "AVARIADO"
-                    repairDescriptionTitle.visibility = View.VISIBLE
-                    repairDescription.visibility = View.VISIBLE
 
+                    if (!parkingMeter.malfunctions.isNullOrEmpty()) {
+                        repairDescription.text = parkingMeter.malfunctions!![0].description
+                        repairDescriptionTitle.visibility = View.VISIBLE
+                        repairDescription.visibility = View.VISIBLE
+                    }
                 }
 
                 3 -> {
@@ -413,41 +421,14 @@ class MapFragment : BaseFragment<MapFragmentVM>(), OnMapReadyCallback,
                         repairDescription.text = parkingMeter.malfunctions[0].description
                     }
 
-                    repairDescriptionTitle.visibility = View.VISIBLE
-                    repairDescription.visibility = View.VISIBLE
+                    if (!parkingMeter.malfunctions.isNullOrEmpty()) {
+                        repairDescription.text = parkingMeter.malfunctions!![0].description
+                        repairDescriptionTitle.visibility = View.VISIBLE
+                        repairDescription.visibility = View.VISIBLE
+                    }
 
                     solveRepair.setOnClickListener {
-                        parkingMeter.status = 0
-
-                        viewModel.updateMalfunctionInParkingMeter(
-                            requireActivity().getToken()!!,
-                            parkingMeter.id,
-                            parkingMeter
-                        ).observe(
-                            this,
-                            androidx.lifecycle.Observer { malfunctionUpdateResponse ->
-
-                                when (malfunctionUpdateResponse.status) {
-                                    Status.SUCCESS -> {
-                                        getMarkers(false)
-                                        bottomSheetLayout.collapse()
-                                        bottomSheetLayout.visibility = View.GONE
-                                    }
-                                    Status.LOADING -> Toast.makeText(
-                                        requireContext(),
-                                        "Changing",
-                                        Toast.LENGTH_LONG
-                                    )
-                                    Status.ERROR -> {
-                                        Toast.makeText(
-                                            requireContext(),
-                                            "Error while solving the repair",
-                                            Toast.LENGTH_LONG
-                                        )
-                                            .show()
-                                    }
-                                }
-                            })
+                        solveRepair(parkingMeter)
                     }
                 }
             }
@@ -485,32 +466,8 @@ class MapFragment : BaseFragment<MapFragmentVM>(), OnMapReadyCallback,
                     longitude = null,
                     parkingMeterId = parkingMeter.id
                 )
-                viewModel.addMaintenanceInParkingMeter(requireActivity().getToken()!!, malfunction)
-                    .observe(this,
-                        androidx.lifecycle.Observer {
-                            when (it.status) {
-                                Status.SUCCESS -> {
-                                    getMarkers(false)
-                                    bottomSheetLayout.collapse()
-                                    bottomSheetLayout.visibility = View.GONE
-                                    imm.toggleSoftInput(InputMethodManager.HIDE_IMPLICIT_ONLY, 0)
-                                }
-                                Status.LOADING -> Toast.makeText(
-                                    requireContext(),
-                                    "Changing",
-                                    Toast.LENGTH_LONG
-                                )
-                                Status.ERROR -> {
-                                    Toast.makeText(
-                                        requireContext(),
-                                        "Error while solving the repair",
-                                        Toast.LENGTH_LONG
-                                    )
-                                        .show()
-                                }
-                            }
-                        })
 
+                createMalfunction(malfunction, imm)
                 dialog.cancel()
             }
             .setNegativeButton("Cancel") { dialog, _ ->
@@ -518,6 +475,132 @@ class MapFragment : BaseFragment<MapFragmentVM>(), OnMapReadyCallback,
             }.create()
 
         alert.show()
+    }
+
+    private fun solveRepair(parkingMeter: ParkingMeter) {
+        parkingMeter.status = 0
+
+        viewModel.updateMalfunctionInParkingMeter(
+            requireActivity().getToken()!!,
+            parkingMeter.id,
+            parkingMeter
+        ).observe(
+            this,
+            androidx.lifecycle.Observer { malfunctionUpdateResponse ->
+
+                when (malfunctionUpdateResponse.status) {
+                    Status.SUCCESS -> {
+                        getMarkers(false)
+                        bottomSheetLayout.collapse()
+                        bottomSheetLayout.visibility = View.GONE
+                    }
+                    Status.LOADING -> Toast.makeText(
+                        requireContext(),
+                        "Changing",
+                        Toast.LENGTH_LONG
+                    )
+                    Status.ERROR -> {
+                        if (malfunctionUpdateResponse.code == 401) {
+                            val refreshTokenRequest =
+                                TokenRequest(
+                                    requireActivity().getRefreshToken().toString()
+                                )
+
+                            viewModel.refreshToken(
+                                requireActivity().getToken().toString(),
+                                refreshTokenRequest
+                            )
+                                .observeForever {
+                                    when (it.status) {
+                                        Status.SUCCESS -> {
+                                            requireActivity().clearSharedPreferences()
+                                            requireActivity().setToken("Bearer ${it?.data?.token}")
+                                            requireActivity().setRefreshToken("${it?.data?.refreshToken}")
+                                            solveRepair(parkingMeter)
+                                        }
+                                        Status.LOADING -> Toast.makeText(
+                                            requireContext(),
+                                            "Refreshing Token",
+                                            Toast.LENGTH_SHORT
+                                        ).show()
+                                        Status.ERROR -> Toast.makeText(
+                                            requireContext(),
+                                            "Error while refreshing the token, logout and login again",
+                                            Toast.LENGTH_SHORT
+                                        ).show()
+                                    }
+                                }
+                        } else {
+                            Toast.makeText(
+                                requireContext(),
+                                "Error while solving the repair",
+                                Toast.LENGTH_LONG
+                            )
+                                .show()
+                        }
+                    }
+                }
+            })
+    }
+
+    private fun createMalfunction(malfunction: Malfunction, imm: InputMethodManager) {
+        viewModel.addMaintenanceInParkingMeter(requireActivity().getToken()!!, malfunction)
+            .observe(this,
+                androidx.lifecycle.Observer {
+                    when (it.status) {
+                        Status.SUCCESS -> {
+                            bottomSheetLayout.collapse()
+                            bottomSheetLayout.visibility = View.GONE
+                            imm.toggleSoftInput(InputMethodManager.HIDE_IMPLICIT_ONLY, 0)
+                            getMarkers(false)
+                        }
+                        Status.LOADING -> Toast.makeText(
+                            requireContext(),
+                            "Changing",
+                            Toast.LENGTH_LONG
+                        )
+                        Status.ERROR -> {
+                            if (it.code == 401) {
+                                val refreshTokenRequest =
+                                    TokenRequest(
+                                        requireActivity().getRefreshToken().toString()
+                                    )
+
+                                viewModel.refreshToken(
+                                    requireActivity().getToken().toString(),
+                                    refreshTokenRequest
+                                )
+                                    .observeForever {
+                                        when (it.status) {
+                                            Status.SUCCESS -> {
+                                                requireActivity().clearSharedPreferences()
+                                                requireActivity().setToken("Bearer ${it?.data?.token}")
+                                                requireActivity().setRefreshToken("${it?.data?.refreshToken}")
+                                                createMalfunction(malfunction, imm)
+                                            }
+                                            Status.LOADING -> Toast.makeText(
+                                                requireContext(),
+                                                "Refreshing Token",
+                                                Toast.LENGTH_SHORT
+                                            ).show()
+                                            Status.ERROR -> Toast.makeText(
+                                                requireContext(),
+                                                "Error while refreshing the token, logout and login again",
+                                                Toast.LENGTH_SHORT
+                                            ).show()
+                                        }
+                                    }
+                            } else {
+                                Toast.makeText(
+                                    requireContext(),
+                                    "Error while creating the repair",
+                                    Toast.LENGTH_LONG
+                                )
+                                    .show()
+                            }
+                        }
+                    }
+                })
     }
 
     override fun onConnected(p0: Bundle?) {
