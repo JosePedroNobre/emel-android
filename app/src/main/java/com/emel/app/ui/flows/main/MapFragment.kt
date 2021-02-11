@@ -2,22 +2,25 @@ package com.emel.app.ui.flows.main
 
 import android.Manifest
 import android.app.Activity
+import android.content.Context
 import android.content.pm.PackageManager
+import android.graphics.Bitmap
+import android.graphics.Canvas
 import android.location.Geocoder
 import android.location.Location
 import android.os.Bundle
-import android.util.Log
+import android.text.Editable
+import android.text.TextWatcher
 import android.view.View
 import android.view.inputmethod.InputMethodManager
 import android.widget.EditText
+import android.widget.RelativeLayout
 import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
-import androidx.core.content.ContextCompat.getSystemService
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.ViewModelProviders
-import com.emel.app.App
 import com.emel.app.R
 import com.emel.app.network.api.adapter.Status
 import com.emel.app.network.api.requests.TokenRequest
@@ -30,7 +33,6 @@ import com.google.android.gms.common.api.GoogleApiClient
 import com.google.android.gms.location.LocationServices
 import com.google.android.gms.maps.CameraUpdateFactory
 import com.google.android.gms.maps.GoogleMap
-import com.google.android.gms.maps.MapsInitializer
 import com.google.android.gms.maps.OnMapReadyCallback
 import com.google.android.gms.maps.model.*
 import com.google.android.material.textfield.TextInputLayout
@@ -40,7 +42,7 @@ import kotlinx.android.synthetic.main.fragment_map.*
 import java.util.*
 import javax.inject.Inject
 
-//0 = GREEN, 1 = YELLOW, 2 = RED
+//0 = GREEN, 1 = YELLOW, 2 = RED , 3 = GREY
 
 class MapFragment : BaseFragment<MapFragmentVM>(), OnMapReadyCallback,
     GoogleMap.OnMarkerClickListener, GoogleMap.OnMapClickListener,
@@ -92,6 +94,20 @@ class MapFragment : BaseFragment<MapFragmentVM>(), OnMapReadyCallback,
                 LOCATION_PERMISSION
             )
         }
+
+        searchAddress.addTextChangedListener(object : TextWatcher {
+            override fun afterTextChanged(p0: Editable?) {
+                // TODO do things with writing text
+            }
+
+            override fun beforeTextChanged(p0: CharSequence?, p1: Int, p2: Int, p3: Int) {
+            }
+
+            override fun onTextChanged(p0: CharSequence?, p1: Int, p2: Int, p3: Int) {
+            }
+
+        })
+
     }
 
     private fun getMarkers(zoomIntoLocation: Boolean = true) {
@@ -232,23 +248,38 @@ class MapFragment : BaseFragment<MapFragmentVM>(), OnMapReadyCallback,
 
             when (it.status) {
                 0 -> {
+
                     markerOptions.icon(
-                        BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_GREEN)
+                        bitmapDescriptorFromVector(
+                            requireContext(),
+                            R.drawable.ic_green
+                        )
                     )
                 }
                 1 -> {
                     markerOptions.icon(
-                        BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_ORANGE)
+                        bitmapDescriptorFromVector(
+                            requireContext(),
+                            R.drawable.ic_yellow
+                        )
                     )
                 }
                 2 -> {
                     markerOptions.icon(
-                        BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_RED)
+                        bitmapDescriptorFromVector(
+                            requireContext(),
+                            R.drawable.ic_red
+
+                        )
                     )
                 }
                 3 -> {
                     markerOptions.icon(
-                        BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_VIOLET)
+                        bitmapDescriptorFromVector(
+                            requireContext(),
+                            R.drawable.ic_grey
+
+                        )
                     )
                 }
             }
@@ -307,6 +338,16 @@ class MapFragment : BaseFragment<MapFragmentVM>(), OnMapReadyCallback,
         googleMap.setOnMarkerClickListener(this)
         mGoogleMap.isMyLocationEnabled = true
 
+        val locationButton = (mapview
+            .parent as View).findViewById<View>("2".toInt())
+        val rlp =
+            locationButton.layoutParams as RelativeLayout.LayoutParams
+        val ruleList = rlp.rules
+        for (i in ruleList.indices) {
+            rlp.removeRule(i)
+        }
+        rlp.addRule(RelativeLayout.CENTER_IN_PARENT, RelativeLayout.TRUE)
+        rlp.addRule(RelativeLayout.ALIGN_PARENT_RIGHT, RelativeLayout.TRUE)
     }
 
     private fun getCurrentLocation() {
@@ -601,6 +642,16 @@ class MapFragment : BaseFragment<MapFragmentVM>(), OnMapReadyCallback,
                         }
                     }
                 })
+    }
+
+    private fun bitmapDescriptorFromVector(context: Context, vectorResId: Int): BitmapDescriptor? {
+        return ContextCompat.getDrawable(context, vectorResId)?.run {
+            setBounds(0, 0, intrinsicWidth, intrinsicHeight)
+            val bitmap =
+                Bitmap.createBitmap(intrinsicWidth, intrinsicHeight, Bitmap.Config.ARGB_8888)
+            draw(Canvas(bitmap))
+            BitmapDescriptorFactory.fromBitmap(bitmap)
+        }
     }
 
     override fun onConnected(p0: Bundle?) {

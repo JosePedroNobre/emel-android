@@ -17,8 +17,9 @@
                 android:layout_marginStart="22dp"
                 android:layout_marginTop="20dp"
                 android:fontFamily="@font/montserrat_bold"
-                android:text="ACTIVAS"
+                android:text="Atribuído"
                 android:textColor="@color/redColor"
+                android:textAllCaps="true"
                 android:textSize="16sp"
                 app:layout_constraintStart_toStartOf="parent"
                 app:layout_constraintTop_toTopOf="parent" />
@@ -30,8 +31,9 @@
                 android:layout_marginStart="20dp"
                 android:layout_marginTop="24dp"
                 android:fontFamily="@font/montserrat_bold"
-                android:text="CONCLUIDAS"
-                android:textColor="@color/colorAccent"
+                android:text="Executado"
+                android:textAllCaps="true"
+                android:textColor="#7FBA00"
                 android:textSize="16sp"
                 app:layout_constraintStart_toStartOf="parent"
                 app:layout_constraintTop_toBottomOf="@+id/activesRv" />

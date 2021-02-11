@@ -4,7 +4,7 @@
     <!-- System colors -->
     <color name="colorPrimary">#149AE4</color>
     <color name="colorPrimaryDark">#000000</color>
-    <color name="colorAccent">#016d1b</color>
+    <color name="colorAccent">#7FBA00</color>
     <color name="colorAccentDark">#015415</color>
     <color name="colorOrange">#FF9800</color>
 
@@ -14,7 +14,7 @@
     <color name="redColor">#E01313</color>
     <color name="blackColor">#000000</color>
     <color name="blueColor">#2196F3</color>
-    <color name="app_blue">#6ECCE2</color>
+    <color name="app_blue">#70CEE2</color>
 
     <!-- states -->
     <color name="colorDisabled">#424f4f4f</color>
