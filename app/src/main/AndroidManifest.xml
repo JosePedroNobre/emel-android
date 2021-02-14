@@ -23,7 +23,7 @@
 
         <meta-data
                 android:name="com.google.android.geo.API_KEY"
-                android:value="AIzaSyB2qhwkzF0D9bh1FUu1GeleHSYZdVQB6Xc" />
+                android:value="AIzaSyDv0fAgprCw4jXuKghO-PXQQFa78vzB6uw" />
 
         <activity
                 android:name="com.emel.app.ui.flows.main.MainActivity"
