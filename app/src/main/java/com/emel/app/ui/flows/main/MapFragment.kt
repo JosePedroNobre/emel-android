@@ -32,6 +32,7 @@ import com.emel.app.network.model.ParkingMeter
 import com.emel.app.ui.base.BaseFragment
 import com.emel.app.ui.common.NavigationManager
 import com.emel.app.utils.*
+import com.google.android.gms.common.api.ApiException
 import com.google.android.gms.common.api.GoogleApiClient
 import com.google.android.gms.location.LocationServices
 import com.google.android.gms.maps.CameraUpdateFactory
@@ -40,6 +41,8 @@ import com.google.android.gms.maps.OnMapReadyCallback
 import com.google.android.gms.maps.model.*
 import com.google.android.libraries.places.api.Places
 import com.google.android.libraries.places.api.model.Place
+import com.google.android.libraries.places.api.net.FetchPlaceRequest
+import com.google.android.libraries.places.api.net.FetchPlaceResponse
 import com.google.android.libraries.places.api.net.PlacesClient
 import com.google.android.libraries.places.widget.Autocomplete
 import com.google.android.libraries.places.widget.AutocompleteActivity
@@ -81,7 +84,7 @@ class MapFragment : BaseFragment<MapFragmentVM>(), OnMapReadyCallback,
     private val AUTOCOMPLETE_REQUEST_CODE = 1
 
     // Set the fields to specify which types of place data to
-    val fields = listOf(Place.Field.ID, Place.Field.NAME)
+    val fields = listOf(Place.Field.ID, Place.Field.NAME, Place.Field.LAT_LNG)
 
     // Start the autocomplete intent.
     val intentBuilder = Autocomplete.IntentBuilder(AutocompleteActivityMode.FULLSCREEN, fields)
@@ -120,6 +123,7 @@ class MapFragment : BaseFragment<MapFragmentVM>(), OnMapReadyCallback,
         //TODO Remover chave daqui
         if (!Places.isInitialized()) {
             Places.initialize(requireContext(), "AIzaSyDv0fAgprCw4jXuKghO-PXQQFa78vzB6uw");
+
         }
 
         // Create a new Places client instance.
@@ -127,7 +131,6 @@ class MapFragment : BaseFragment<MapFragmentVM>(), OnMapReadyCallback,
 
 
         searchAddress.setOnClickListener {
-            Log.d("test","search address button clicked")
             startActivityForResult(intentBuilder.build(requireContext()), AUTOCOMPLETE_REQUEST_CODE)
         }
 
@@ -140,7 +143,11 @@ class MapFragment : BaseFragment<MapFragmentVM>(), OnMapReadyCallback,
                 Activity.RESULT_OK -> {
                     data?.let {
                         val place = Autocomplete.getPlaceFromIntent(data)
-                        Log.i("test", "Place: ${place.name}, ${place.id}")
+                        this.latitude = place.latLng?.latitude ?: 0.0
+                        this.longitude = place.latLng?.longitude ?: 0.0
+                        moveMap()
+                        Log.i("test", "Place: ${place.name}, ${place.id}, ${place.id}")
+
                     }
                 }
                 AutocompleteActivity.RESULT_ERROR -> {
@@ -158,8 +165,6 @@ class MapFragment : BaseFragment<MapFragmentVM>(), OnMapReadyCallback,
         }
         super.onActivityResult(requestCode, resultCode, data)
     }
-
-
 
 
 
