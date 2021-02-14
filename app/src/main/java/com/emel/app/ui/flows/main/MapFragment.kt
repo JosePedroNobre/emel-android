@@ -119,7 +119,7 @@ class MapFragment : BaseFragment<MapFragmentVM>(), OnMapReadyCallback,
 
         //TODO Remover chave daqui
         if (!Places.isInitialized()) {
-            Places.initialize(requireContext(), "AIzaSyB2qhwkzF0D9bh1FUu1GeleHSYZdVQB6Xc");
+            Places.initialize(requireContext(), "AIzaSyDv0fAgprCw4jXuKghO-PXQQFa78vzB6uw");
         }
 
         // Create a new Places client instance.
