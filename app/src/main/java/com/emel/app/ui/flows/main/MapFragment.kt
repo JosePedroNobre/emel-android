@@ -3,6 +3,7 @@ package com.emel.app.ui.flows.main
 import android.Manifest
 import android.app.Activity
 import android.content.Context
+import android.content.Intent
 import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.graphics.Canvas
@@ -11,6 +12,8 @@ import android.location.Location
 import android.os.Bundle
 import android.text.Editable
 import android.text.TextWatcher
+import android.util.Log
+import android.view.MenuItem
 import android.view.View
 import android.view.inputmethod.InputMethodManager
 import android.widget.EditText
@@ -35,6 +38,12 @@ import com.google.android.gms.maps.CameraUpdateFactory
 import com.google.android.gms.maps.GoogleMap
 import com.google.android.gms.maps.OnMapReadyCallback
 import com.google.android.gms.maps.model.*
+import com.google.android.libraries.places.api.Places
+import com.google.android.libraries.places.api.model.Place
+import com.google.android.libraries.places.api.net.PlacesClient
+import com.google.android.libraries.places.widget.Autocomplete
+import com.google.android.libraries.places.widget.AutocompleteActivity
+import com.google.android.libraries.places.widget.model.AutocompleteActivityMode
 import com.google.android.material.textfield.TextInputLayout
 import im.delight.android.location.SimpleLocation
 import kotlinx.android.synthetic.main.activity_main.*
@@ -68,6 +77,18 @@ class MapFragment : BaseFragment<MapFragmentVM>(), OnMapReadyCallback,
     private var parkingMeters: List<ParkingMeter> = emptyList()
     private var googleApiClient: GoogleApiClient? = null
 
+
+    private val AUTOCOMPLETE_REQUEST_CODE = 1
+
+    // Set the fields to specify which types of place data to
+    val fields = listOf(Place.Field.ID, Place.Field.NAME)
+
+    // Start the autocomplete intent.
+    val intentBuilder = Autocomplete.IntentBuilder(AutocompleteActivityMode.FULLSCREEN, fields)
+
+
+
+
     override fun layoutToInflate() = R.layout.fragment_map
 
     override fun defineViewModel() =
@@ -95,20 +116,54 @@ class MapFragment : BaseFragment<MapFragmentVM>(), OnMapReadyCallback,
             )
         }
 
-        searchAddress.addTextChangedListener(object : TextWatcher {
-            override fun afterTextChanged(p0: Editable?) {
-                // TODO do things with writing text
-            }
 
-            override fun beforeTextChanged(p0: CharSequence?, p1: Int, p2: Int, p3: Int) {
-            }
+        //TODO Remover chave daqui
+        if (!Places.isInitialized()) {
+            Places.initialize(requireContext(), "AIzaSyB2qhwkzF0D9bh1FUu1GeleHSYZdVQB6Xc");
+        }
 
-            override fun onTextChanged(p0: CharSequence?, p1: Int, p2: Int, p3: Int) {
-            }
+        // Create a new Places client instance.
+        val placesClient: PlacesClient = Places.createClient(requireContext())
 
-        })
+
+        searchAddress.setOnClickListener {
+            Log.d("test","search address button clicked")
+            startActivityForResult(intentBuilder.build(requireContext()), AUTOCOMPLETE_REQUEST_CODE)
+        }
+
 
     }
+
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        if (requestCode == AUTOCOMPLETE_REQUEST_CODE) {
+            when (resultCode) {
+                Activity.RESULT_OK -> {
+                    data?.let {
+                        val place = Autocomplete.getPlaceFromIntent(data)
+                        Log.i("test", "Place: ${place.name}, ${place.id}")
+                    }
+                }
+                AutocompleteActivity.RESULT_ERROR -> {
+                    // TODO: Handle the error.
+                    data?.let {
+                        val status = Autocomplete.getStatusFromIntent(data)
+                        Log.i("test", status.statusMessage)
+                    }
+                }
+                Activity.RESULT_CANCELED -> {
+                    // The user canceled the operation.
+                }
+            }
+            return
+        }
+        super.onActivityResult(requestCode, resultCode, data)
+    }
+
+
+
+
+
+
 
     private fun getMarkers(zoomIntoLocation: Boolean = true) {
         val token = requireActivity().getToken()

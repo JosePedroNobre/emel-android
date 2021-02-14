@@ -8,11 +8,13 @@ import dagger.android.DispatchingAndroidInjector
 import dagger.android.HasActivityInjector
 import javax.inject.Inject
 
+
 class App @Inject constructor() : HasActivityInjector, MultiDexApplication() {
 
     companion object {
         lateinit var instance: App
             private set
+
     }
 
     @Inject
@@ -23,6 +25,8 @@ class App @Inject constructor() : HasActivityInjector, MultiDexApplication() {
     override fun onCreate() {
         super.onCreate()
     }
+
+
 
     override fun attachBaseContext(base: Context?) {
         super.attachBaseContext(base)
