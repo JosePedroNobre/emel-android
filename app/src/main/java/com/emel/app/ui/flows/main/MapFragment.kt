@@ -126,6 +126,8 @@ class MapFragment : BaseFragment<MapFragmentVM>(), OnMapReadyCallback,
         searchAddress.setOnClickListener {
             startActivityForResult(intentBuilder.build(requireContext()), AUTOCOMPLETE_REQUEST_CODE)
         }
+
+
     }
 
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
@@ -428,7 +430,22 @@ class MapFragment : BaseFragment<MapFragmentVM>(), OnMapReadyCallback,
                     solveRepair.setBackgroundResource(R.drawable.rounded_button_grey)
 
                     createRepair.setOnClickListener {
-                        createDescriptionDialog(parkingMeter)
+                        createDescriptionDialog(parkingMeter, "Criar") {
+                            val malfunction = Malfunction(
+                                id = null,
+                                creationDate = null,
+                                resolvedDate = null,
+                                status = 0,
+                                description = it,
+                                latitude = null,
+                                longitude = null,
+                                parkingMeterId = parkingMeter.id,
+                                applicationUserId = null
+                            )
+                            val imm: InputMethodManager =
+                                requireActivity().getSystemService(Activity.INPUT_METHOD_SERVICE) as InputMethodManager
+                            createMalfunction(malfunction, imm)
+                        }
                     }
 
                     subtitle.text = "OPERACIONAL"
@@ -445,6 +462,23 @@ class MapFragment : BaseFragment<MapFragmentVM>(), OnMapReadyCallback,
 
                     createRepair.setBackgroundResource(R.drawable.rounded_button_grey)
                     solveRepair.setBackgroundResource(R.drawable.rounded_button_green)
+
+                    repairDescriptionTitle.setOnClickListener {
+                        createDescriptionDialog(parkingMeter, "Editar") {
+                            val malfunction = Malfunction(
+                                id = null,
+                                creationDate = null,
+                                resolvedDate = null,
+                                status = 0,
+                                description = it,
+                                latitude = null,
+                                longitude = null,
+                                parkingMeterId = parkingMeter.id,
+                                applicationUserId = null
+                            )
+                            editMalfunction(malfunction, it)
+                        }
+                    }
 
                     solveRepair.setOnClickListener {
                         solveRepair(parkingMeter)
@@ -505,7 +539,11 @@ class MapFragment : BaseFragment<MapFragmentVM>(), OnMapReadyCallback,
         }
     }
 
-    private fun createDescriptionDialog(parkingMeter: ParkingMeter) {
+    private fun createDescriptionDialog(
+        parkingMeter: ParkingMeter,
+        buttonText: String = "Criar",
+        onClick: (input: String) -> (Unit)
+    ) {
         val textInputLayout = TextInputLayout(requireContext())
         textInputLayout.setPadding(
             19, // if you look at android alert_dialog.xml, you will see the message textview have margin 14dp and padding 5dp. This is the reason why I use 19 here
@@ -514,28 +552,19 @@ class MapFragment : BaseFragment<MapFragmentVM>(), OnMapReadyCallback,
             0
         )
         val input = EditText(context)
-        val imm: InputMethodManager =
-            requireActivity().getSystemService(Activity.INPUT_METHOD_SERVICE) as InputMethodManager
+
+        if (!parkingMeter.malfunctions.isNullOrEmpty()) {
+            input.setText(parkingMeter.malfunctions.first().description)
+        }
+
         textInputLayout.hint = "Inserir Descrição"
         textInputLayout.addView(input)
 
         val alert = AlertDialog.Builder(requireContext())
             .setView(textInputLayout)
-            .setPositiveButton("Criar") { dialog, _ ->
+            .setPositiveButton(buttonText) { dialog, _ ->
 
-                val malfunction = Malfunction(
-                    id = null,
-                    creationDate = null,
-                    resolvedDate = null,
-                    status = 0,
-                    description = input.text.toString(),
-                    latitude = null,
-                    longitude = null,
-                    parkingMeterId = parkingMeter.id,
-                    applicationUserId = null
-                )
-
-                createMalfunction(malfunction, imm)
+                onClick(input.text.toString())
                 dialog.cancel()
             }
             .setNegativeButton("Cancel") { dialog, _ ->
@@ -674,6 +703,74 @@ class MapFragment : BaseFragment<MapFragmentVM>(), OnMapReadyCallback,
                         }
                     }
                 })
+    }
+
+    private fun editMalfunction(malfunction: Malfunction, description: String) {
+        if (malfunction.applicationUserId != null && (malfunction.applicationUserId == getUserId())
+        ) {
+            malfunction.description = description
+
+            viewModel.updateMalfunction(
+                requireActivity().getToken()!!,
+                malfunction.id!!,
+                malfunction
+            )
+                .observe(
+                    this,
+                    androidx.lifecycle.Observer { malfunctionUpdateResponse ->
+
+                        when (malfunctionUpdateResponse.status) {
+                            Status.SUCCESS -> {
+                                bottomSheetLayout.collapse()
+                                bottomSheetLayout.visibility = View.GONE
+                                getMarkers(false)
+                            }
+                            Status.LOADING -> print("Loading")
+                            Status.ERROR -> {
+                                if (malfunctionUpdateResponse.code == 401) {
+                                    val refreshTokenRequest =
+                                        TokenRequest(
+                                            requireActivity().getRefreshToken().toString()
+                                        )
+
+                                    viewModel.refreshToken(
+                                        requireActivity().getToken().toString(),
+                                        refreshTokenRequest
+                                    )
+                                        .observeForever {
+                                            when (it.status) {
+                                                Status.SUCCESS -> {
+                                                    requireActivity().clearSharedPreferences()
+                                                    requireActivity().setToken("Bearer ${it?.data?.token}")
+                                                    requireActivity().setRefreshToken("${it?.data?.refreshToken}")
+                                                    editMalfunction(malfunction, description)
+
+                                                }
+                                                Status.LOADING -> Toast.makeText(
+                                                    requireContext(),
+                                                    "Refreshing Token",
+                                                    Toast.LENGTH_SHORT
+                                                ).show()
+                                                Status.ERROR -> {
+                                                    logout()
+                                                }
+                                            }
+                                        }
+                                } else {
+                                    Toast.makeText(
+                                        requireContext(),
+                                        "Error while solving the repair",
+                                        Toast.LENGTH_LONG
+                                    )
+                                        .show()
+                                }
+                            }
+                        }
+                    })
+        } else {
+            Toast.makeText(requireContext(), "Can't edit this parking meter", Toast.LENGTH_SHORT)
+                .show()
+        }
     }
 
     private fun logout() {

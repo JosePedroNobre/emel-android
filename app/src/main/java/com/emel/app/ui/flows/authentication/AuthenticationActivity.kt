@@ -57,6 +57,14 @@ class AuthenticationActivity : BaseActivity<AuthenticationActivityVM>() {
             })
         }
 
+        register.setOnClickListener {
+            val browseintent = Intent(
+                Intent.ACTION_VIEW,
+                Uri.parse("https://parkingmetermanager.azurewebsites.net/Identity/Account/Register")
+            )
+            startActivity(browseintent)
+        }
+
         recoverPass.setOnClickListener {
             val browseintent = Intent(
                 Intent.ACTION_VIEW,

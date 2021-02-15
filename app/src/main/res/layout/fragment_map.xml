@@ -84,6 +84,7 @@
                     android:layout_height="wrap_content"
                     android:layout_gravity="center_horizontal"
                     android:layout_marginBottom="20dp"
+                    android:drawableEnd="@drawable/ic_pencil"
                     android:fontFamily="@font/montserrat_bold"
                     android:text="Descrição da Avaria"
                     android:textColor="@color/blackColor"

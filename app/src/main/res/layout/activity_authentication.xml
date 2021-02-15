@@ -57,16 +57,29 @@
             app:layout_constraintTop_toBottomOf="@+id/username" />
 
     <TextView
-            android:id="@+id/recoverPass"
+            android:id="@+id/register"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginTop="22dp"
             android:fontFamily="@font/montserrat_medium"
-            android:text="Recuperar Password"
+            android:text="Registo"
             android:textColor="@color/app_blue"
             app:layout_constraintEnd_toEndOf="@+id/password"
             app:layout_constraintStart_toStartOf="@+id/password"
             app:layout_constraintTop_toBottomOf="@+id/password" />
+
+    <TextView
+            android:id="@+id/recoverPass"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:fontFamily="@font/montserrat_medium"
+            android:text="Recuperar Password"
+            android:textColor="@color/app_blue"
+            app:layout_constraintEnd_toEndOf="@+id/password"
+            app:layout_constraintHorizontal_bias="0.491"
+            app:layout_constraintStart_toStartOf="@+id/password"
+            app:layout_constraintTop_toBottomOf="@+id/register" />
 
     <Button
             android:id="@+id/loginButton"

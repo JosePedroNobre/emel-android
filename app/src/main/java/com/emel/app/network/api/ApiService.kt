@@ -47,6 +47,13 @@ interface ApiService {
         @Body parkingMeter: ParkingMeter
     ): LiveData<ApiResponse<Malfunction>>
 
+    @PUT("/api/malfunction/{id}")
+    fun updateMalfunction(
+        @Header("Authorization") token: String,
+        @Path("id", encoded = true) id: String,
+        @Body parkingMeter: Malfunction
+    ): LiveData<ApiResponse<Malfunction>>
+
 
     @GET("GetListaCartoes?TipoLista=ATIVOS")
     fun getParkingMeters(@Header("Authorization") h1: String): LiveData<ApiResponse<List<ParkingMeter>>>

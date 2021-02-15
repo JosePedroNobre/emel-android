@@ -31,9 +31,9 @@ class EmelRepository @Inject constructor(
         }.asLiveData()
     }
 
-    fun refreshToken(token: String,tokenRequest: TokenRequest): LiveData<Resource<TokenResponse>> {
+    fun refreshToken(token: String, tokenRequest: TokenRequest): LiveData<Resource<TokenResponse>> {
         return object : NetworkBoundResource<TokenResponse>(appExecutors) {
-            override fun createCall() = apiService.refreshToken(token,tokenRequest)
+            override fun createCall() = apiService.refreshToken(token, tokenRequest)
         }.asLiveData()
     }
 
@@ -51,6 +51,17 @@ class EmelRepository @Inject constructor(
         return object : NetworkBoundResource<Malfunction>(appExecutors) {
             override fun createCall() =
                 apiService.updateMalfunctionInParkingMeter(token, id.toString(), parkingMeter)
+        }.asLiveData()
+    }
+
+    fun updateMalfunction(
+        token: String,
+        id: Int,
+        malfunction: Malfunction
+    ): LiveData<Resource<Malfunction>> {
+        return object : NetworkBoundResource<Malfunction>(appExecutors) {
+            override fun createCall() =
+                apiService.updateMalfunction(token, id.toString(), malfunction)
         }.asLiveData()
     }
 

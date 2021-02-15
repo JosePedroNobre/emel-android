@@ -17,6 +17,9 @@ class MapFragmentVM @Inject constructor(private val emelRepository: EmelReposito
     fun updateMalfunctionInParkingMeter(token: String, id: Int, parkingMeter: ParkingMeter) =
         emelRepository.updateMalfunctionInParkingMeter(token, id, parkingMeter)
 
+    fun updateMalfunction(token: String, id: Int, malfunction: Malfunction) =
+        emelRepository.updateMalfunction(token, id, malfunction)
+
     fun getParkingMeters(token: String) =
         emelRepository.getAllParkingMeters(token)
 

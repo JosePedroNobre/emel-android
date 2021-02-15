@@ -11,7 +11,7 @@ data class ParkingMeter(
 
 data class Malfunction(
     val id: Int?,
-    val description: String,
+    var description: String,
     val latitude: Double?,
     val longitude: Double?,
     val creationDate: String?,
