@@ -6,7 +6,7 @@ apply plugin: 'kotlin-kapt'
 android {
     compileSdkVersion 28
     defaultConfig {
-        applicationId "com.cartaoadepto"
+        applicationId "com.emel"
         minSdkVersion 23
         targetSdkVersion 28
         versionCode 2

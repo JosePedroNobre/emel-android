@@ -1,6 +1,6 @@
 package com.emel.app.ui.flows.main
 
-import android.util.Log
+
 import android.widget.Toast
 import androidx.lifecycle.Observer
 import androidx.lifecycle.ViewModelProvider
@@ -10,7 +10,6 @@ import com.emel.app.R
 import com.emel.app.network.api.adapter.Status
 import com.emel.app.network.api.requests.TokenRequest
 import com.emel.app.network.model.Malfunction
-import com.emel.app.network.model.ParkingMeter
 import com.emel.app.ui.adapter.MalfunctionsAdapter
 import com.emel.app.ui.base.BaseFragment
 import com.emel.app.utils.*
@@ -46,10 +45,11 @@ class TasksFragment : BaseFragment<TasksFragmentVM>() {
                     malFunctions = it.data!!
                     setRvActives()
                     setRvFinished()
+                    LoadingUtils.dismiss()
                 }
-                Status.LOADING -> Toast.makeText(requireContext(), "Loading", Toast.LENGTH_SHORT)
-                    .show()
+                Status.LOADING -> LoadingUtils.showLoading(childFragmentManager)
                 Status.ERROR -> {
+                    LoadingUtils.dismiss()
                     if (it.code == 401) {
                         val refreshTokenRequest =
                             TokenRequest(requireActivity().getRefreshToken().toString())

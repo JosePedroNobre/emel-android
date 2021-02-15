@@ -1,33 +1,33 @@
 {
   "project_info": {
-    "project_number": "682686796889",
-    "project_id": "adepto-ed641",
-    "storage_bucket": "adepto-ed641.appspot.com"
+    "project_number": "998106511675",
+    "project_id": "emel-71f9a",
+    "storage_bucket": "emel-71f9a.appspot.com"
   },
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:682686796889:android:ee89db4939c91ef35acd48",
+        "mobilesdk_app_id": "1:998106511675:android:2748e9aaffd48109585f1e",
         "android_client_info": {
-          "package_name": "com.cartaoadepto"
+          "package_name": "com.emel"
         }
       },
       "oauth_client": [
         {
-          "client_id": "682686796889-d6jh9hd5tiq5a2i27vnqijdhhrlqe010.apps.googleusercontent.com",
+          "client_id": "998106511675-d6832dr0rmm6ug2rvtnfclhnr05nlvsq.apps.googleusercontent.com",
           "client_type": 3
         }
       ],
       "api_key": [
         {
-          "current_key": "AIzaSyCU42Z_kbF7QCfDSzK5HVE2kisY9eA9UfE"
+          "current_key": "AIzaSyDOpVoMtr295N4EMVEmrdvnnpbjZ0y3F2k"
         }
       ],
       "services": {
         "appinvite_service": {
           "other_platform_oauth_client": [
             {
-              "client_id": "682686796889-d6jh9hd5tiq5a2i27vnqijdhhrlqe010.apps.googleusercontent.com",
+              "client_id": "998106511675-d6832dr0rmm6ug2rvtnfclhnr05nlvsq.apps.googleusercontent.com",
               "client_type": 3
             }
           ]

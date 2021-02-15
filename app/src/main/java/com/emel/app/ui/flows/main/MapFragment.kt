@@ -10,10 +10,7 @@ import android.graphics.Canvas
 import android.location.Geocoder
 import android.location.Location
 import android.os.Bundle
-import android.text.Editable
-import android.text.TextWatcher
 import android.util.Log
-import android.view.MenuItem
 import android.view.View
 import android.view.inputmethod.InputMethodManager
 import android.widget.EditText
@@ -24,6 +21,8 @@ import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.ViewModelProviders
+import com.auth0.android.jwt.Claim
+import com.auth0.android.jwt.JWT
 import com.emel.app.R
 import com.emel.app.network.api.adapter.Status
 import com.emel.app.network.api.requests.TokenRequest
@@ -32,7 +31,6 @@ import com.emel.app.network.model.ParkingMeter
 import com.emel.app.ui.base.BaseFragment
 import com.emel.app.ui.common.NavigationManager
 import com.emel.app.utils.*
-import com.google.android.gms.common.api.ApiException
 import com.google.android.gms.common.api.GoogleApiClient
 import com.google.android.gms.location.LocationServices
 import com.google.android.gms.maps.CameraUpdateFactory
@@ -41,9 +39,6 @@ import com.google.android.gms.maps.OnMapReadyCallback
 import com.google.android.gms.maps.model.*
 import com.google.android.libraries.places.api.Places
 import com.google.android.libraries.places.api.model.Place
-import com.google.android.libraries.places.api.net.FetchPlaceRequest
-import com.google.android.libraries.places.api.net.FetchPlaceResponse
-import com.google.android.libraries.places.api.net.PlacesClient
 import com.google.android.libraries.places.widget.Autocomplete
 import com.google.android.libraries.places.widget.AutocompleteActivity
 import com.google.android.libraries.places.widget.model.AutocompleteActivityMode
@@ -90,8 +85,6 @@ class MapFragment : BaseFragment<MapFragmentVM>(), OnMapReadyCallback,
     val intentBuilder = Autocomplete.IntentBuilder(AutocompleteActivityMode.FULLSCREEN, fields)
 
 
-
-
     override fun layoutToInflate() = R.layout.fragment_map
 
     override fun defineViewModel() =
@@ -119,22 +112,20 @@ class MapFragment : BaseFragment<MapFragmentVM>(), OnMapReadyCallback,
             )
         }
 
-
-        //TODO Remover chave daqui
-        if (!Places.isInitialized()) {
-            Places.initialize(requireContext(), "AIzaSyDv0fAgprCw4jXuKghO-PXQQFa78vzB6uw");
-
+        val location: Location? = LocationServices.FusedLocationApi.getLastLocation(googleApiClient)
+        if (location != null) {
+            longitude = location.longitude
+            latitude = location.latitude
+            moveMap()
         }
 
-        // Create a new Places client instance.
-        val placesClient: PlacesClient = Places.createClient(requireContext())
-
+        if (!Places.isInitialized()) {
+            Places.initialize(requireContext(), "AIzaSyDv0fAgprCw4jXuKghO-PXQQFa78vzB6uw");
+        }
 
         searchAddress.setOnClickListener {
             startActivityForResult(intentBuilder.build(requireContext()), AUTOCOMPLETE_REQUEST_CODE)
         }
-
-
     }
 
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
@@ -151,7 +142,6 @@ class MapFragment : BaseFragment<MapFragmentVM>(), OnMapReadyCallback,
                     }
                 }
                 AutocompleteActivity.RESULT_ERROR -> {
-                    // TODO: Handle the error.
                     data?.let {
                         val status = Autocomplete.getStatusFromIntent(data)
                         Log.i("test", status.statusMessage)
@@ -167,9 +157,6 @@ class MapFragment : BaseFragment<MapFragmentVM>(), OnMapReadyCallback,
     }
 
 
-
-
-
     private fun getMarkers(zoomIntoLocation: Boolean = true) {
         val token = requireActivity().getToken()
         parkingMeters = emptyList()
@@ -180,10 +167,11 @@ class MapFragment : BaseFragment<MapFragmentVM>(), OnMapReadyCallback,
                         parkingMeters = it.data
                         drawPinpoint(zoomIntoLocation)
                     }
+                    LoadingUtils.dismiss()
                 }
-                Status.LOADING -> Toast.makeText(requireContext(), "Loading", Toast.LENGTH_LONG)
-                    .show()
+                Status.LOADING -> LoadingUtils.showLoading(childFragmentManager)
                 Status.ERROR -> {
+                    LoadingUtils.dismiss()
                     if (it.code == 401) {
                         val refreshTokenRequest =
                             TokenRequest(requireActivity().getRefreshToken().toString())
@@ -205,11 +193,9 @@ class MapFragment : BaseFragment<MapFragmentVM>(), OnMapReadyCallback,
                                         "Refreshing Token",
                                         Toast.LENGTH_SHORT
                                     ).show()
-                                    Status.ERROR -> Toast.makeText(
-                                        requireContext(),
-                                        "Error while refreshing the token, logout and login again",
-                                        Toast.LENGTH_SHORT
-                                    ).show()
+                                    Status.ERROR -> {
+                                        logout()
+                                    }
                                 }
                             }
                     } else {
@@ -350,7 +336,7 @@ class MapFragment : BaseFragment<MapFragmentVM>(), OnMapReadyCallback,
 
         // move camera
         if (zoomIntoLocation) {
-            mGoogleMap.moveCamera(CameraUpdateFactory.newLatLngZoom(currentLatLng, 20f))
+            mGoogleMap.moveCamera(CameraUpdateFactory.newLatLngZoom(currentLatLng, 1f))
         }
 
     }
@@ -392,7 +378,6 @@ class MapFragment : BaseFragment<MapFragmentVM>(), OnMapReadyCallback,
             return
         }
 
-        getCurrentLocation()
         getMarkers()
         googleMap.setOnMapClickListener(this)
         googleMap.setOnMarkerClickListener(this)
@@ -408,25 +393,6 @@ class MapFragment : BaseFragment<MapFragmentVM>(), OnMapReadyCallback,
         }
         rlp.addRule(RelativeLayout.CENTER_IN_PARENT, RelativeLayout.TRUE)
         rlp.addRule(RelativeLayout.ALIGN_PARENT_RIGHT, RelativeLayout.TRUE)
-    }
-
-    private fun getCurrentLocation() {
-        if (ActivityCompat.checkSelfPermission(
-                requireContext(),
-                Manifest.permission.ACCESS_FINE_LOCATION
-            ) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(
-                requireContext(),
-                Manifest.permission.ACCESS_COARSE_LOCATION
-            ) != PackageManager.PERMISSION_GRANTED
-        ) {
-            return
-        }
-        val location: Location? = LocationServices.FusedLocationApi.getLastLocation(googleApiClient)
-        if (location != null) {
-            longitude = location.longitude
-            latitude = location.latitude
-            moveMap()
-        }
     }
 
     private fun moveMap() {
@@ -565,7 +531,8 @@ class MapFragment : BaseFragment<MapFragmentVM>(), OnMapReadyCallback,
                     description = input.text.toString(),
                     latitude = null,
                     longitude = null,
-                    parkingMeterId = parkingMeter.id
+                    parkingMeterId = parkingMeter.id,
+                    applicationUserId = null
                 )
 
                 createMalfunction(malfunction, imm)
@@ -578,70 +545,81 @@ class MapFragment : BaseFragment<MapFragmentVM>(), OnMapReadyCallback,
         alert.show()
     }
 
+
+    private fun getUserId(): String? {
+        val parsedJWT = requireContext().getToken()?.replace("Bearer ", "")?.let { JWT(it) }
+        val subscriptionMetaData: Claim = parsedJWT!!.getClaim("id")
+        return subscriptionMetaData.asString()
+    }
+
     private fun solveRepair(parkingMeter: ParkingMeter) {
-        parkingMeter.status = 0
 
-        viewModel.updateMalfunctionInParkingMeter(
-            requireActivity().getToken()!!,
-            parkingMeter.id,
-            parkingMeter
-        ).observe(
-            this,
-            androidx.lifecycle.Observer { malfunctionUpdateResponse ->
+        if (!parkingMeter.malfunctions.isNullOrEmpty() && parkingMeter.malfunctions.first().applicationUserId != null && parkingMeter.malfunctions.first().applicationUserId?.equals(
+                getUserId()
+            )!!
+        ) {
+            parkingMeter.status = 0
 
-                when (malfunctionUpdateResponse.status) {
-                    Status.SUCCESS -> {
-                        getMarkers(false)
-                        bottomSheetLayout.collapse()
-                        bottomSheetLayout.visibility = View.GONE
-                    }
-                    Status.LOADING -> Toast.makeText(
-                        requireContext(),
-                        "Changing",
-                        Toast.LENGTH_LONG
-                    )
-                    Status.ERROR -> {
-                        if (malfunctionUpdateResponse.code == 401) {
-                            val refreshTokenRequest =
-                                TokenRequest(
-                                    requireActivity().getRefreshToken().toString()
+            viewModel.updateMalfunctionInParkingMeter(
+                requireActivity().getToken()!!,
+                parkingMeter.id,
+                parkingMeter
+            ).observe(
+                this,
+                androidx.lifecycle.Observer { malfunctionUpdateResponse ->
+
+                    when (malfunctionUpdateResponse.status) {
+                        Status.SUCCESS -> {
+                            bottomSheetLayout.collapse()
+                            bottomSheetLayout.visibility = View.GONE
+                            getMarkers(false)
+                        }
+                        Status.LOADING -> print("Loading")
+                        Status.ERROR -> {
+                            if (malfunctionUpdateResponse.code == 401) {
+                                val refreshTokenRequest =
+                                    TokenRequest(
+                                        requireActivity().getRefreshToken().toString()
+                                    )
+
+                                viewModel.refreshToken(
+                                    requireActivity().getToken().toString(),
+                                    refreshTokenRequest
                                 )
+                                    .observeForever {
+                                        when (it.status) {
+                                            Status.SUCCESS -> {
+                                                requireActivity().clearSharedPreferences()
+                                                requireActivity().setToken("Bearer ${it?.data?.token}")
+                                                requireActivity().setRefreshToken("${it?.data?.refreshToken}")
+                                                solveRepair(parkingMeter)
 
-                            viewModel.refreshToken(
-                                requireActivity().getToken().toString(),
-                                refreshTokenRequest
-                            )
-                                .observeForever {
-                                    when (it.status) {
-                                        Status.SUCCESS -> {
-                                            requireActivity().clearSharedPreferences()
-                                            requireActivity().setToken("Bearer ${it?.data?.token}")
-                                            requireActivity().setRefreshToken("${it?.data?.refreshToken}")
-                                            solveRepair(parkingMeter)
+                                            }
+                                            Status.LOADING -> Toast.makeText(
+                                                requireContext(),
+                                                "Refreshing Token",
+                                                Toast.LENGTH_SHORT
+                                            ).show()
+                                            Status.ERROR -> {
+                                                logout()
+                                            }
                                         }
-                                        Status.LOADING -> Toast.makeText(
-                                            requireContext(),
-                                            "Refreshing Token",
-                                            Toast.LENGTH_SHORT
-                                        ).show()
-                                        Status.ERROR -> Toast.makeText(
-                                            requireContext(),
-                                            "Error while refreshing the token, logout and login again",
-                                            Toast.LENGTH_SHORT
-                                        ).show()
                                     }
-                                }
-                        } else {
-                            Toast.makeText(
-                                requireContext(),
-                                "Error while solving the repair",
-                                Toast.LENGTH_LONG
-                            )
-                                .show()
+                            } else {
+                                Toast.makeText(
+                                    requireContext(),
+                                    "Error while solving the repair",
+                                    Toast.LENGTH_LONG
+                                )
+                                    .show()
+                            }
                         }
                     }
-                }
-            })
+                })
+        } else {
+            Toast.makeText(requireContext(), "Can't repair this parking meter", Toast.LENGTH_SHORT)
+                .show()
+        }
     }
 
     private fun createMalfunction(malfunction: Malfunction, imm: InputMethodManager) {
@@ -655,11 +633,7 @@ class MapFragment : BaseFragment<MapFragmentVM>(), OnMapReadyCallback,
                             imm.toggleSoftInput(InputMethodManager.HIDE_IMPLICIT_ONLY, 0)
                             getMarkers(false)
                         }
-                        Status.LOADING -> Toast.makeText(
-                            requireContext(),
-                            "Changing",
-                            Toast.LENGTH_LONG
-                        )
+                        Status.LOADING -> print("Loading")
                         Status.ERROR -> {
                             if (it.code == 401) {
                                 val refreshTokenRequest =
@@ -684,11 +658,9 @@ class MapFragment : BaseFragment<MapFragmentVM>(), OnMapReadyCallback,
                                                 "Refreshing Token",
                                                 Toast.LENGTH_SHORT
                                             ).show()
-                                            Status.ERROR -> Toast.makeText(
-                                                requireContext(),
-                                                "Error while refreshing the token, logout and login again",
-                                                Toast.LENGTH_SHORT
-                                            ).show()
+                                            Status.ERROR -> {
+                                                logout()
+                                            }
                                         }
                                     }
                             } else {
@@ -704,6 +676,17 @@ class MapFragment : BaseFragment<MapFragmentVM>(), OnMapReadyCallback,
                 })
     }
 
+    private fun logout() {
+        requireActivity()
+        navigationManager.goToAuthentication(requireContext())
+        requireActivity().finish()
+        Toast.makeText(
+            requireContext(),
+            "Error you have been logged out",
+            Toast.LENGTH_LONG
+        ).show()
+    }
+
     private fun bitmapDescriptorFromVector(context: Context, vectorResId: Int): BitmapDescriptor? {
         return ContextCompat.getDrawable(context, vectorResId)?.run {
             setBounds(0, 0, intrinsicWidth, intrinsicHeight)
@@ -715,7 +698,7 @@ class MapFragment : BaseFragment<MapFragmentVM>(), OnMapReadyCallback,
     }
 
     override fun onConnected(p0: Bundle?) {
-        getCurrentLocation()
+
     }
 
     override fun onConnectionSuspended(p0: Int) {

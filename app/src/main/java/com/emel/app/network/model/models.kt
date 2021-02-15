@@ -17,5 +17,6 @@ data class Malfunction(
     val creationDate: String?,
     val resolvedDate: String?,
     var status: Int?,
-    val parkingMeterId: Int
+    val parkingMeterId: Int,
+    val applicationUserId: String?
 )
