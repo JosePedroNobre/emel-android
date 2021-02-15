@@ -466,7 +466,7 @@ class MapFragment : BaseFragment<MapFragmentVM>(), OnMapReadyCallback,
                     repairDescriptionTitle.setOnClickListener {
                         createDescriptionDialog(parkingMeter, "Editar") {
                             val malfunction = Malfunction(
-                                id = null,
+                                id = parkingMeter.malfunctions?.first()?.id,
                                 creationDate = null,
                                 resolvedDate = null,
                                 status = 0,
@@ -474,7 +474,7 @@ class MapFragment : BaseFragment<MapFragmentVM>(), OnMapReadyCallback,
                                 latitude = null,
                                 longitude = null,
                                 parkingMeterId = parkingMeter.id,
-                                applicationUserId = null
+                                applicationUserId = parkingMeter.malfunctions?.first()?.applicationUserId
                             )
                             editMalfunction(malfunction, it)
                         }
@@ -706,7 +706,9 @@ class MapFragment : BaseFragment<MapFragmentVM>(), OnMapReadyCallback,
     }
 
     private fun editMalfunction(malfunction: Malfunction, description: String) {
-        if (malfunction.applicationUserId != null && (malfunction.applicationUserId == getUserId())
+        val imm: InputMethodManager =
+            requireActivity().getSystemService(Activity.INPUT_METHOD_SERVICE) as InputMethodManager
+        if (malfunction.applicationUserId != null && malfunction.applicationUserId == getUserId()
         ) {
             malfunction.description = description
 
@@ -724,6 +726,7 @@ class MapFragment : BaseFragment<MapFragmentVM>(), OnMapReadyCallback,
                                 bottomSheetLayout.collapse()
                                 bottomSheetLayout.visibility = View.GONE
                                 getMarkers(false)
+                                imm.toggleSoftInput(InputMethodManager.HIDE_IMPLICIT_ONLY, 0)
                             }
                             Status.LOADING -> print("Loading")
                             Status.ERROR -> {
